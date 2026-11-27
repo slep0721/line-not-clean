@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LINE 訂位對話測試模擬器</title>
+  <style>
+    :root { color-scheme: light; font-family: "Segoe UI", "Noto Sans TC", sans-serif; color: #172033; background: #e8eef7; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    header { padding: 16px clamp(16px, 4vw, 36px); background: #14213d; color: white; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    header h1 { margin: 0 0 3px; font-size: 20px; }
+    header p { margin: 0; color: #cbd5e1; font-size: 13px; }
+    .top-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .nav-btn { display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; font-size: 13px; font-weight: 650; text-decoration: none; cursor: pointer; font-family: inherit; }
+    .nav-btn:hover { background: #334155; }
+
+    .container { width: min(860px, calc(100% - 24px)); margin: 18px auto 24px; display: grid; grid-template-rows: auto 1fr auto; gap: 12px; min-height: 0; }
+    .status-bar { padding: 10px 14px; border-radius: 12px; background: white; border: 1px solid #d6dfeb; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: #334155; }
+    .status-bar code { padding: 2px 6px; border-radius: 6px; background: #f1f5f9; color: #0f172a; font-size: 12px; }
+
+    .chat-box { background: #7494c0; border-radius: 16px; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 400px; max-height: calc(100vh - 290px); box-shadow: inset 0 2px 8px #0f172a1f; }
+    .msg-row { display: flex; flex-direction: column; max-width: 82%; gap: 4px; }
+    .msg-row.user { align-self: flex-end; align-items: flex-end; }
+    .msg-row.bot { align-self: flex-start; align-items: flex-start; }
+    .bubble { padding: 11px 14px; border-radius: 16px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; box-shadow: 0 2px 6px #0f172a1a; }
+    .msg-row.user .bubble { background: #8de055; color: #111827; border-bottom-right-radius: 4px; }
+    .msg-row.bot .bubble { background: #ffffff; color: #172033; border-bottom-left-radius: 4px; }
+    .msg-meta { font-size: 11px; color: #eef2f8; padding: 0 4px; }
+    .booking-banner { margin-top: 6px; padding: 7px 10px; border-radius: 8px; background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; font-size: 12px; font-weight: 650; }
+
+    .composer-card { background: white; border: 1px solid #d6dfeb; border-radius: 14px; padding: 12px; display: grid; gap: 10px; }
+    .quick-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { padding: 5px 10px; border-radius: 999px; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .chip:hover { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+    form { display: flex; gap: 8px; }
+    input[type="text"] { flex: 1; min-height: 42px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; font: inherit; font-size: 14px; }
+    button.send-btn { min-height: 42px; padding: 0 18px; border: 0; border-radius: 10px; background: #1d4ed8; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    button.send-btn:disabled { opacity: .6; cursor: wait; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>LINE 訂位對話測試模擬器</h1>
+      <p>測試自然語言訂位並即時同步業主後台（支援本機／遠端後端與 GitHub Pages 獨立模式）</p>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="new-user" class="nav-btn">切換新顧客對話</button>
+      <a class="nav-btn" href="./admin.html" target="_blank" rel="noopener">開啟業主後台 ↗</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="status-bar">
+      <span id="ai-info">正在讀取模型設定…</span>
+      <span>測試顧客 ID：<code id="tester-id">tester-1</code></span>
+    </div>
+
+    <div id="chat" class="chat-box" aria-live="polite"></div>
+
+    <div class="composer-card">
+      <div class="quick-chips">
+        <button type="button" class="chip" data-text="請問你們營業時間跟桌位有哪些？">詢問營業資訊</button>
+        <button type="button" class="chip" data-text="明天晚上 6 點，四大一小，電話 0912345678">明天晚間 5 位（口語）</button>
+        <button type="button" class="chip" data-text="明天中午 12 點，2 位，0987654321">明天午間 2 位</button>
+        <button type="button" class="chip" data-text="確認">確認</button>
+        <button type="button" class="chip" data-text="我選第一個方案">選第一個方案</button>
+        <button type="button" class="chip" data-text="取消">取消</button>
+      </div>
+      <form id="chat-form">
+        <input id="message-input" type="text" placeholder="輸入顧客訊息，例如：明天晚上 6 點，3 位，電話 0912345678" autocomplete="off" required>
+        <button id="send-btn" class="send-btn" type="submit">送出</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="./browser-store.js"></script>
+  <script>
+    const bridge = window.RestaurantBridge;
+    const chat = document.querySelector("#chat");
+    const form = document.querySelector("#chat-form");
+    const input = document.querySelector("#message-input");
+    const sendBtn = document.querySelector("#send-btn");
+    const testerIdEl = document.querySelector("#tester-id");
+    const aiInfoEl = document.querySelector("#ai-info");
+
+    let testerCounter = 1;
+    let currentUserId = `tester-${testerCounter}`;
+
+    function appendMessage(role, text, metaText = "", reservation = null) {
+      const row = document.createElement("div");
+      row.className = `msg-row ${role}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      if (reservation) {
+        const banner = document.createElement("div");
+        banner.className = "booking-banner";
+        banner.textContent = `✓ 已建立訂位 #${reservation.id}（${reservation.date} ${reservation.time}，${reservation.guestCount} 位），業主後台已同步更新`;
+        bubble.append(banner);
+      }
+
+      row.append(bubble);
+      if (metaText) {
+        const meta = document.createElement("div");
+        meta.className = "msg-meta";
+        meta.textContent = metaText;
+        row.append(meta);
+      }
+
+      chat.append(row);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function formatEngineMeta(meta, elapsedMs) {
+      if (!meta) return `${elapsedMs} ms`;
+      if (meta.engine === "gemini") return `Gemini · ${meta.model}（${elapsedMs} ms）`;
+      if (meta.engine === "fast-path") return `本機快路徑（${elapsedMs} ms）`;
+      if (meta.engine === "rules") return `規則式備援（${elapsedMs} ms）`;
+      if (meta.engine === "browser-demo") return `GitHub Pages 瀏覽器引擎（${elapsedMs} ms）`;
+      return `${meta.engine}（${elapsedMs} ms）`;
+    }
+
+    async function refreshHealth() {
+      try {
+        const mode = bridge.getMode();
+        if (mode === "browser-local") {
+          aiInfoEl.innerHTML = "模式：<code>GitHub Pages 瀏覽器展示模式</code>（如需連接 Gemini 後端，請先於業主後台點「連線設定」）";
+          return;
+        }
+        const data = await bridge.fetchHealth();
+        if (data.ai?.enabled) {
+          aiInfoEl.innerHTML = `AI 備援鏈：<code>${data.ai.models.join(" → ")}</code> → 規則式兜底`;
+        } else {
+          aiInfoEl.textContent = "目前後端未設定 GEMINI_API_KEY，使用規則式引擎。";
+        }
+      } catch {
+        aiInfoEl.textContent = "無法取得後端健康狀態。";
+      }
+    }
+
+    async function sendMessage(text) {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      appendMessage("user", trimmed);
+      input.value = "";
+      sendBtn.disabled = true;
+      input.disabled = true;
+
+      try {
+        const data = await bridge.sendChat(currentUserId, trimmed);
+        appendMessage("bot", data.text, formatEngineMeta(data.meta, data.elapsedMs), data.reservation);
+      } catch (error) {
+        appendMessage("bot", `測試失敗：${error.message}`);
+      } finally {
+        sendBtn.disabled = false;
+        input.disabled = false;
+        input.focus();
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      sendMessage(input.value);
+    });
+
+    for (const chip of document.querySelectorAll(".chip")) {
+      chip.addEventListener("click", () => sendMessage(chip.dataset.text));
+    }
+
+    document.querySelector("#new-user").addEventListener("click", () => {
+      testerCounter += 1;
+      currentUserId = `tester-${testerCounter}`;
+      testerIdEl.textContent = currentUserId;
+      chat.replaceChildren();
+      appendMessage("bot", "已切換為新顧客對話。歡迎輸入任何訂位需求或營業詢問開始測試！");
+      input.focus();
+    });
+
+    appendMessage("bot", "您好！這裡是訂位對話測試模擬器。請試著輸入訂位需求（或點下方快捷範例），完成訂位後可直接到業主後台查看即時更新。");
+    refreshHealth();
+  </script>
+</body>
+</html>

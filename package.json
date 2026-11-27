@@ -1,0 +1,14 @@
+{
+  "name": "line-restaurant-reservation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "透過 LINE 接收餐廳訂位並將桌位安排即時儲存到 SQLite。",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs"
+  }
+}

@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>餐廳訂位後台</title>
+  <style>
+    :root { color-scheme: light; font-family: "Segoe UI", "Noto Sans TC", sans-serif; color: #172033; background: #f3f6fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { padding: 20px clamp(16px, 4vw, 48px); color: white; background: #14213d; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; }
+    header h1 { margin: 0 0 5px; font-size: clamp(22px, 3vw, 30px); }
+    header p { margin: 0; color: #d8e2f4; }
+    .header-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .header-link { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 14px; border-radius: 10px; background: #22c55e; color: #062814; font-weight: 750; text-decoration: none; font-size: 14px; }
+    .header-link:hover { filter: brightness(1.05); }
+    .header-btn { min-height: 40px; padding: 8px 14px; border-radius: 10px; border: 1px solid #64748b; background: #1e293b; color: white; font-weight: 650; font-size: 13px; cursor: pointer; }
+    main { width: min(1220px, calc(100% - 28px)); margin: 20px auto 48px; display: grid; gap: 18px; }
+    .panel { padding: clamp(16px, 3vw, 24px); border: 1px solid #e0e7f0; border-radius: 16px; background: white; box-shadow: 0 8px 28px #1a31500c; }
+    .panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .panel h2 { margin: 0; font-size: 20px; }
+    .live-pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; border: 1px solid #a7f3d0; }
+    .live-dot { width: 8px; height: 8px; border-radius: 999px; background: #10b981; }
+    .live-pill.offline { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+    .live-pill.offline .live-dot { background: #ef4444; }
+    .live-pill.demo { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .live-pill.demo .live-dot { background: #3b82f6; }
+
+    /* Connection banner for GitHub Pages / remote backend */
+    .conn-bar { padding: 14px 18px; border: 1px solid #cbd5e1; border-radius: 14px; background: #f8fafd; display: grid; gap: 12px; }
+    .conn-summary { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: #334155; }
+    .conn-summary strong { color: #14213d; }
+    .conn-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .conn-form { display: none; flex-wrap: wrap; align-items: end; gap: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; }
+    .conn-form.open { display: flex; }
+    .conn-form label { flex: 1 1 230px; }
+    .conn-hint { width: 100%; margin: 0; font-size: 12px; color: #64748b; }
+
+    /* Real-time overview cards (Option 2) */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .kpi-card { padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 13px; background: #f8fafd; display: grid; gap: 6px; align-content: start; }
+    .kpi-card.highlight { border-color: #bfdbfe; background: #eff6ff; }
+    .kpi-label { color: #526078; font-size: 13px; font-weight: 650; }
+    .kpi-value { font-size: 24px; font-weight: 800; color: #14213d; line-height: 1.2; }
+    .kpi-sub { color: #475569; font-size: 13px; line-height: 1.45; }
+    .kpi-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+    .mini-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .mini-badge.reserved { background: #fef3c7; color: #92400e; }
+    .mini-badge.seated { background: #fee2e2; color: #991b1b; }
+    .mini-badge.completed { background: #e2e8f0; color: #334155; }
+    .mini-badge.cancelled { background: #f1f5f9; color: #64748b; }
+    .upcoming-action { margin-top: 4px; }
+
+    .toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 14px; }
+    label { display: grid; gap: 5px; color: #526078; font-size: 13px; font-weight: 650; }
+    input, select, button { min-height: 40px; padding: 8px 11px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #172033; font: inherit; }
+    button { border-color: #1d4ed8; background: #1d4ed8; color: white; font-weight: 700; cursor: pointer; }
+    button.secondary { border-color: #cbd5e1; color: #26344d; background: white; }
+    button.btn-sm { min-height: 30px; padding: 4px 10px; font-size: 12px; border-radius: 7px; }
+    button.btn-seat { border-color: #059669; background: #059669; color: white; }
+    button.btn-leave { border-color: #2563eb; background: #2563eb; color: white; }
+    button.btn-cancel { border-color: #fca5a5; background: #fff5f5; color: #b91c1c; }
+    button.btn-restore { border-color: #cbd5e1; background: #f8fafc; color: #334155; }
+    button:hover { filter: brightness(.95); }
+    button:disabled { opacity: .55; cursor: wait; }
+
+    .period-switch { display: inline-flex; gap: 6px; padding: 4px; border: 1px solid #d6dfeb; border-radius: 11px; background: #f1f5fb; }
+    .period-tab { min-height: 36px; padding: 6px 14px; border: 0; border-radius: 8px; background: transparent; color: #3d4d66; font-weight: 650; }
+    .period-tab.active { background: #14213d; color: white; }
+    .hours-bar { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; }
+    .hours-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #dbe4f0; border-radius: 999px; background: #f8fafd; color: #334155; font-size: 13px; }
+    .hours-pill strong { color: #14213d; }
+    .hours-pill.active { border-color: #1d4ed8; background: #eff6ff; color: #1e3a8a; }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 7px 0 15px; color: #53627a; font-size: 13px; }
+    .swatch { display: inline-block; width: 13px; height: 13px; margin-right: 6px; border-radius: 4px; vertical-align: -2px; }
+
+    .room { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 16px; border: 2px solid #d6dfeb; border-radius: 14px; background: #f8fafd; }
+    .zone { min-width: 0; padding: 12px; border: 1px dashed #c5d0df; border-radius: 10px; }
+    .zone h3 { margin: 0 0 10px; color: #46536a; font-size: 14px; }
+    .tables { display: grid; grid-template-columns: repeat(3, minmax(110px, 1fr)); gap: 10px; }
+    .table-card { min-height: 106px; padding: 10px 8px; display: grid; align-content: center; justify-items: center; gap: 4px; border: 2px solid #1d4ed8; border-radius: 12px; color: white; background: #2563eb; font-weight: 750; text-align: center; }
+    .table-card.reserved { border-color: #b45309; background: #d97706; }
+    .table-card.seated { border-color: #b91c1c; background: #dc2626; }
+    .table-card small { font-weight: 500; opacity: .95; font-size: 12px; line-height: 1.3; }
+    .table-card .card-action { margin-top: 4px; min-height: 26px; padding: 3px 9px; font-size: 11px; border-radius: 6px; border: 1px solid #ffffffaa; background: #ffffff26; color: white; font-weight: 700; }
+    .table-card .card-action:hover { background: #ffffff44; }
+    .summary-line { margin: 13px 0 0; color: #526078; font-size: 14px; }
+
+    .period-sections { display: grid; gap: 18px; margin-top: 14px; }
+    .period-block { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+    .period-block.active { border-color: #93c5fd; box-shadow: 0 0 0 2px #dbeafe; }
+    .period-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px; background: #f8fafd; border-bottom: 1px solid #e2e8f0; }
+    .period-header h3 { margin: 0; font-size: 16px; color: #14213d; }
+    .period-meta { color: #526078; font-size: 13px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th, td { padding: 10px 11px; border-bottom: 1px solid #e8edf4; text-align: left; }
+    th { color: #526078; background: #f7f9fc; font-size: 13px; }
+    td { font-size: 14px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr.muted { opacity: .62; background: #fafbfd; }
+    .status-tag { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .status-tag.reserved { background: #fef3c7; color: #92400e; }
+    .status-tag.seated { background: #fee2e2; color: #991b1b; }
+    .status-tag.completed { background: #e2e8f0; color: #334155; }
+    .status-tag.cancelled { background: #f1f5f9; color: #64748b; text-decoration: line-through; }
+    .row-actions { display: inline-flex; gap: 6px; }
+    .empty { padding: 24px 12px; color: #64748b; text-align: center; }
+    .notice { color: #64748b; font-size: 13px; margin: 0; }
+    #toast { position: fixed; right: 18px; bottom: 18px; z-index: 5; max-width: min(420px, calc(100vw - 36px)); padding: 14px 18px; border-radius: 12px; color: white; background: #14213d; box-shadow: 0 8px 30px #0f172a33; opacity: 0; transform: translateY(10px); pointer-events: none; transition: .2s ease; }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 980px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 720px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .room { grid-template-columns: 1fr; }
+      .tables { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>餐廳訂位後台</h1>
+      <p>依中午時段與晚上時段即時掌握訂位組數、現場入座進度與桌位平面圖</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" id="toggle-conn" class="header-btn">連線設定</button>
+      <a class="header-link" href="./test-chat.html" target="_blank" rel="noopener">開啟對話測試模擬器 ↗</a>
+    </div>
+  </header>
+
+  <main>
+    <section id="conn-bar" class="conn-bar" aria-label="後端連線模式">
+      <div class="conn-summary">
+        <span id="conn-desc">正在偵測運行環境…</span>
+        <div class="conn-actions">
+          <button type="button" id="demo-seed" class="btn-sm secondary" style="display:none">重置示範資料</button>
+          <button type="button" id="demo-clear" class="btn-sm secondary" style="display:none">清空本機資料</button>
+          <button type="button" id="open-conn-btn" class="btn-sm secondary">設定遠端後端</button>
+        </div>
+      </div>
+      <form id="conn-form" class="conn-form">
+        <label>後端伺服器網址（Cloudflare Tunnel 或 localhost）
+          <input id="backend-url" type="url" placeholder="https://xxxx.trycloudflare.com 或 http://localhost:3000">
+        </label>
+        <label>業主密碼（.env 中的 ADMIN_PASSWORD，僅暫存於此瀏覽器分頁）
+          <input id="backend-pass" type="password" placeholder="輸入 ADMIN_PASSWORD">
+        </label>
+        <button type="submit" id="save-conn" class="btn-sm">測試並連線</button>
+        <button type="button" id="disconnect-conn" class="btn-sm secondary">切回獨立模式</button>
+        <p class="conn-hint">GitHub Pages 為純靜態託管：未設定後端網址時，後台與測試模擬器會自動以瀏覽器本機資料獨立運行；填入執行中 Node 服務的網址與密碼即可即時同步真實 SQLite 與 LINE 訂位。</p>
+      </form>
+    </section>
+
+    <section class="panel" aria-label="即時訂位狀況總覽">
+      <div class="panel-head">
+        <h2>即時訂位狀況總覽</h2>
+        <span id="live-status" class="live-pill"><i class="live-dot"></i>即時連線中</span>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card highlight">
+          <span class="kpi-label" id="kpi-period-title">本時段有效訂位</span>
+          <div class="kpi-value" id="kpi-bookings">--</div>
+          <div class="kpi-sub" id="kpi-day-breakdown">載入中…</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">現場入座進度</span>
+          <div class="kpi-value" id="kpi-seated">--</div>
+          <div class="kpi-badges" id="kpi-status-badges"></div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">桌位即時空況</span>
+          <div class="kpi-value" id="kpi-tables">--</div>
+          <div class="kpi-sub" id="kpi-seats">載入中…</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">下一組待入座</span>
+          <div class="kpi-value" id="kpi-next-time">--</div>
+          <div class="kpi-sub" id="kpi-next-detail">載入中…</div>
+          <div class="upcoming-action" id="kpi-next-action"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>桌位平面圖</h2>
+      </div>
+      <div class="toolbar">
+        <div>
+          <label>營業時段</label>
+          <div class="period-switch" role="tablist" aria-label="營業時段切換">
+            <button type="button" id="tab-lunch" class="period-tab" role="tab" data-period="lunch">中午時段</button>
+            <button type="button" id="tab-dinner" class="period-tab" role="tab" data-period="dinner">晚上時段</button>
+          </div>
+        </div>
+        <label>查看日期<input id="date" type="date"></label>
+        <label>查看時間<select id="time"></select></label>
+        <button id="refresh" type="button">更新畫面</button>
+        <button id="notifications" type="button" class="secondary">啟用桌面提醒</button>
+      </div>
+      <div class="hours-bar" aria-label="營業時間資訊">
+        <span id="pill-lunch" class="hours-pill"><strong>中午時段</strong> 11:30–14:30（最晚入座 12:30）</span>
+        <span id="pill-dinner" class="hours-pill"><strong>晚上時段</strong> 17:00–20:00（最晚入座 18:00）</span>
+        <span class="hours-pill">全年無休｜每筆訂位保留 2 小時｜離席或取消立即釋出座位</span>
+      </div>
+      <div class="legend">
+        <span><i class="swatch" style="background:#2563eb"></i>此時段可訂</span>
+        <span><i class="swatch" style="background:#d97706"></i>已訂位（待入座）</span>
+        <span><i class="swatch" style="background:#dc2626"></i>用餐中（已入座）</span>
+      </div>
+      <div class="room" aria-label="餐廳桌位平面圖">
+        <div class="zone"><h3>4 人桌（共 6 桌）</h3><div id="four-tables" class="tables"></div></div>
+        <div class="zone"><h3>2 人桌（共 6 桌）</h3><div id="two-tables" class="tables"></div></div>
+      </div>
+      <p id="floor-summary" class="summary-line">載入中…</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>當日訂位與入座管理</h2>
+      </div>
+      <p class="notice">依中午時段與晚上時段分開顯示，可直接一鍵切換「報到入座」、「離席」或「取消」並即時同步。</p>
+      <div class="period-sections">
+        <div id="section-lunch" class="period-block">
+          <div class="period-header">
+            <h3>中午時段（11:30–14:30）</h3>
+            <span id="meta-lunch" class="period-meta">最晚入座 12:30</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>編號</th>
+                  <th>狀態</th>
+                  <th>訂位時間</th>
+                  <th>入座／預計離席</th>
+                  <th>人數</th>
+                  <th>聯絡電話</th>
+                  <th>安排桌位</th>
+                  <th>現場操作</th>
+                </tr>
+              </thead>
+              <tbody id="reservations-lunch"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="section-dinner" class="period-block">
+          <div class="period-header">
+            <h3>晚上時段（17:00–20:00）</h3>
+            <span id="meta-dinner" class="period-meta">最晚入座 18:00</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>編號</th>
+                  <th>狀態</th>
+                  <th>訂位時間</th>
+                  <th>入座／預計離席</th>
+                  <th>人數</th>
+                  <th>聯絡電話</th>
+                  <th>安排桌位</th>
+                  <th>現場操作</th>
+                </tr>
+              </thead>
+              <tbody id="reservations-dinner"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="./browser-store.js"></script>
+  <script>
+    const bridge = window.RestaurantBridge;
+    const PERIODS = {
+      lunch: { label: "中午時段", hours: "11:30–14:30", lastSeating: "12:30", slots: bridge.SERVICE_PERIODS.lunch.slots },
+      dinner: { label: "晚上時段", hours: "17:00–20:00", lastSeating: "18:00", slots: bridge.SERVICE_PERIODS.dinner.slots },
+    };
+
+    const STATUS_LABELS = {
+      reserved: "待入座",
+      seated: "用餐中",
+      completed: "已離席",
+      cancelled: "已取消",
+    };
+
+    const dateInput = document.querySelector("#date");
+    const timeSelect = document.querySelector("#time");
+    const toast = document.querySelector("#toast");
+    const liveStatus = document.querySelector("#live-status");
+    const connBar = document.querySelector("#conn-bar");
+    const connDesc = document.querySelector("#conn-desc");
+    const connForm = document.querySelector("#conn-form");
+    const backendUrlInput = document.querySelector("#backend-url");
+    const backendPassInput = document.querySelector("#backend-pass");
+    const demoSeedBtn = document.querySelector("#demo-seed");
+    const demoClearBtn = document.querySelector("#demo-clear");
+    let currentPeriod = new Date().getHours() < 15 ? "lunch" : "dinner";
+    let closeStream = null;
+    let toastTimer;
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/gu, (character) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
+      })[character]);
+    }
+
+    function tableName(id) {
+      const [capacity, number] = id.split("-");
+      return `${capacity} 人桌 ${number}`;
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 6000);
+    }
+
+    function updateConnectionUI() {
+      const mode = bridge.getMode();
+      const cfg = bridge.getConnectionConfig();
+      backendUrlInput.value = cfg.url;
+      backendPassInput.value = cfg.password;
+
+      const isLocalDemo = mode === "browser-local";
+      demoSeedBtn.style.display = isLocalDemo ? "" : "none";
+      demoClearBtn.style.display = isLocalDemo ? "" : "none";
+
+      if (mode === "same-origin") {
+        connBar.style.display = connForm.classList.contains("open") ? "grid" : "none";
+        connDesc.innerHTML = "<strong>模式：本機／同源伺服器即時連線</strong>（直接連接目前伺服器的 SQLite 與 Gemini）";
+      } else if (mode === "remote") {
+        connBar.style.display = "grid";
+        connDesc.innerHTML = `<strong>模式：遠端後端連線</strong>（<code>${escapeHtml(cfg.url)}</code>）`;
+      } else {
+        connBar.style.display = "grid";
+        connDesc.innerHTML = "<strong>模式：GitHub Pages 獨立展示模式</strong>（資料存於目前瀏覽器，可與「對話測試模擬器」跨分頁即時互動；也可設定遠端後端網址連接真實 LINE 訂位）";
+      }
+    }
+
+    function populateTimeOptions(period, preserveTime = false) {
+      const config = PERIODS[period];
+      const previous = timeSelect.value;
+      timeSelect.replaceChildren();
+
+      const allOption = document.createElement("option");
+      allOption.value = "all";
+      allOption.textContent = `整個${config.label}（${config.hours}）`;
+      timeSelect.append(allOption);
+
+      for (const slot of config.slots) {
+        const option = document.createElement("option");
+        option.value = slot;
+        option.textContent = slot === config.lastSeating ? `${slot}（最晚入座）` : slot;
+        timeSelect.append(option);
+      }
+
+      if (preserveTime && (previous === "all" || config.slots.includes(previous))) {
+        timeSelect.value = previous;
+      } else {
+        timeSelect.value = "all";
+      }
+    }
+
+    function updatePeriodUI() {
+      for (const key of ["lunch", "dinner"]) {
+        const active = key === currentPeriod;
+        const tab = document.querySelector(`#tab-${key}`);
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", String(active));
+        document.querySelector(`#pill-${key}`).classList.toggle("active", active);
+        document.querySelector(`#section-${key}`).classList.toggle("active", active);
+      }
+    }
+
+    function setPeriod(period) {
+      if (!PERIODS[period]) return;
+      currentPeriod = period;
+      updatePeriodUI();
+      populateTimeOptions(period, false);
+      loadData().catch((error) => showToast(error.message));
+    }
+
+    async function changeStatus(id, status, button) {
+      if (button) button.disabled = true;
+      try {
+        await bridge.patchStatus(id, status);
+        showToast(`訂位 #${id} 已更新為「${STATUS_LABELS[status] ?? status}」。`);
+        await loadData();
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    function renderOverview(data) {
+      const periodInfo = PERIODS[data.period] ?? PERIODS[currentPeriod];
+      const periodSum = data.summary.period;
+      const lunchSum = data.periods.lunch.summary;
+      const dinnerSum = data.periods.dinner.summary;
+      const tableSum = data.summary.tables;
+
+      document.querySelector("#kpi-period-title").textContent = `${periodInfo.label}有效訂位`;
+      document.querySelector("#kpi-bookings").textContent = `${periodSum.effectiveGroups} 組 / ${periodSum.effectiveGuests} 位`;
+      document.querySelector("#kpi-day-breakdown").textContent =
+        `當日合計 ${data.summary.day.effectiveGroups} 組（${data.summary.day.effectiveGuests} 位）｜午 ${lunchSum.effectiveGroups} 組・晚 ${dinnerSum.effectiveGroups} 組`;
+
+      document.querySelector("#kpi-seated").textContent = `用餐中 ${periodSum.seatedGroups} 組（${periodSum.seatedGuests} 位）`;
+      const badges = [
+        `<span class="mini-badge reserved">待入座 ${periodSum.reservedGroups} 組（${periodSum.reservedGuests} 位）</span>`,
+        `<span class="mini-badge completed">已離席 ${periodSum.completedGroups} 組</span>`,
+      ];
+      if (periodSum.cancelledGroups > 0) {
+        badges.push(`<span class="mini-badge cancelled">已取消 ${periodSum.cancelledGroups} 組</span>`);
+      }
+      document.querySelector("#kpi-status-badges").innerHTML = badges.join("");
+
+      document.querySelector("#kpi-tables").textContent = `可訂 ${tableSum.availableTables} / ${tableSum.totalTables} 桌`;
+      document.querySelector("#kpi-seats").textContent =
+        `剩餘可容納 ${tableSum.availableSeats} 位｜用餐中 ${tableSum.seatedTables} 桌・待入座 ${tableSum.reservedTables} 桌`;
+
+      const next = data.summary.nextUpcoming;
+      const nextActionHost = document.querySelector("#kpi-next-action");
+      nextActionHost.replaceChildren();
+      if (!next) {
+        document.querySelector("#kpi-next-time").textContent = "無待報到";
+        document.querySelector("#kpi-next-detail").textContent = "目前沒有待入座的訂位組別。";
+      } else {
+        const nextPeriodLabel = PERIODS[next.period]?.label ?? "";
+        document.querySelector("#kpi-next-time").textContent = `${next.time}・${next.guestCount} 位`;
+        document.querySelector("#kpi-next-detail").textContent =
+          `#${next.id}（${nextPeriodLabel}）｜${next.tables.map(tableName).join("、")}｜${next.phone}`;
+        const seatBtn = document.createElement("button");
+        seatBtn.type = "button";
+        seatBtn.className = "btn-sm btn-seat";
+        seatBtn.textContent = `一鍵報到入座（#${next.id}）`;
+        seatBtn.addEventListener("click", () => changeStatus(next.id, "seated", seatBtn));
+        nextActionHost.append(seatBtn);
+      }
+
+      document.querySelector("#meta-lunch").textContent =
+        `最晚入座 12:30｜待入座 ${lunchSum.reservedGroups} 組・用餐中 ${lunchSum.seatedGroups} 組・已離席 ${lunchSum.completedGroups} 組`;
+      document.querySelector("#meta-dinner").textContent =
+        `最晚入座 18:00｜待入座 ${dinnerSum.reservedGroups} 組・用餐中 ${dinnerSum.seatedGroups} 組・已離席 ${dinnerSum.completedGroups} 組`;
+    }
+
+    function renderTables(tables) {
+      for (const capacity of [4, 2]) {
+        const host = document.querySelector(capacity === 4 ? "#four-tables" : "#two-tables");
+        host.replaceChildren();
+        for (const table of tables.filter((item) => item.capacity === capacity)) {
+          const card = document.createElement("div");
+          const stateClass = table.state === "seated" ? " seated" : (table.state === "reserved" ? " reserved" : "");
+          card.className = `table-card${stateClass}`;
+
+          if (!table.reservation) {
+            card.innerHTML = `${escapeHtml(tableName(table.id))}<small>可訂位</small>`;
+          } else {
+            const res = table.reservation;
+            const statusText = res.status === "seated" ? "用餐中" : "待入座";
+            const timeLine = res.status === "seated"
+              ? `預計 ${res.expectedEndTime} 離席`
+              : `${res.time} 訂位`;
+            card.innerHTML = `${escapeHtml(tableName(table.id))}<small>#${escapeHtml(res.id)}｜${escapeHtml(statusText)}｜${escapeHtml(res.guestCount)} 位</small><small>${escapeHtml(timeLine)}</small>`;
+
+            const actionBtn = document.createElement("button");
+            actionBtn.type = "button";
+            actionBtn.className = "card-action";
+            if (res.status === "reserved") {
+              actionBtn.textContent = "報到入座";
+              actionBtn.addEventListener("click", () => changeStatus(res.id, "seated", actionBtn));
+            } else {
+              actionBtn.textContent = "結帳離席";
+              actionBtn.addEventListener("click", () => changeStatus(res.id, "completed", actionBtn));
+            }
+            card.append(actionBtn);
+          }
+
+          host.append(card);
+        }
+      }
+    }
+
+    function buildActionButtons(item) {
+      const wrap = document.createElement("div");
+      wrap.className = "row-actions";
+
+      const addButton = (label, nextStatus, cls) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `btn-sm ${cls}`;
+        btn.textContent = label;
+        btn.addEventListener("click", () => changeStatus(item.id, nextStatus, btn));
+        wrap.append(btn);
+      };
+
+      if (item.status === "reserved") {
+        addButton("報到入座", "seated", "btn-seat");
+        addButton("取消", "cancelled", "btn-cancel");
+      } else if (item.status === "seated") {
+        addButton("已離席", "completed", "btn-leave");
+        addButton("退回待入座", "reserved", "btn-restore");
+      } else {
+        addButton("恢復待入座", "reserved", "btn-restore");
+      }
+
+      return wrap;
+    }
+
+    function renderPeriodTable(tbodyId, reservations, periodLabel) {
+      const tbody = document.querySelector(tbodyId);
+      tbody.replaceChildren();
+      if (reservations.length === 0) {
+        tbody.innerHTML = `<tr><td class="empty" colspan="8">${escapeHtml(periodLabel)}目前沒有訂位</td></tr>`;
+        return;
+      }
+
+      for (const item of reservations) {
+        const tr = document.createElement("tr");
+        if (item.status === "completed" || item.status === "cancelled") {
+          tr.className = "muted";
+        }
+        const tables = item.tables.map(tableName).join("、");
+        const seatingInfo = item.status === "seated"
+          ? `${item.seatedTime || item.time} 入座（預計 ${item.expectedEndTime} 離席）`
+          : item.status === "completed"
+            ? `${item.seatedTime || item.time} 入座・已離席`
+            : item.status === "cancelled"
+              ? "已取消（座位已釋出）"
+              : `${item.time}–${item.endTime}（尚未報到）`;
+
+        tr.innerHTML = [
+          `<td>#${escapeHtml(item.id)}</td>`,
+          `<td><span class="status-tag ${escapeHtml(item.status)}">${escapeHtml(STATUS_LABELS[item.status] ?? item.status)}</span></td>`,
+          `<td>${escapeHtml(item.time)}</td>`,
+          `<td>${escapeHtml(seatingInfo)}</td>`,
+          `<td>${escapeHtml(item.guestCount)} 位</td>`,
+          `<td>${escapeHtml(item.phone)}</td>`,
+          `<td>${escapeHtml(tables)}</td>`,
+        ].join("");
+
+        const actionCell = document.createElement("td");
+        actionCell.append(buildActionButtons(item));
+        tr.append(actionCell);
+        tbody.append(tr);
+      }
+    }
+
+    async function loadData() {
+      if (!dateInput.value) return;
+      const data = await bridge.fetchDashboard({
+        date: dateInput.value,
+        period: currentPeriod,
+        time: timeSelect.value || "all",
+      });
+
+      renderOverview(data);
+      renderTables(data.tables);
+      renderPeriodTable("#reservations-lunch", data.periods.lunch.reservations, "中午時段");
+      renderPeriodTable("#reservations-dinner", data.periods.dinner.reservations, "晚上時段");
+
+      const periodInfo = PERIODS[data.period] ?? PERIODS[currentPeriod];
+      const tableSum = data.summary.tables;
+      const scopeLabel = data.time === "all"
+        ? `${periodInfo.label}（${periodInfo.hours}）`
+        : `${periodInfo.label} ${data.time}`;
+      document.querySelector("#floor-summary").textContent =
+        `${data.date} ${scopeLabel}｜用餐中 ${tableSum.seatedTables} 桌、待入座 ${tableSum.reservedTables} 桌、可訂 ${tableSum.availableTables} 桌（剩餘 ${tableSum.availableSeats} 個座位）。`;
+    }
+
+    function connectLive() {
+      if (closeStream) closeStream();
+      const mode = bridge.getMode();
+      closeStream = bridge.openLiveStream({
+        onConnected: (label) => {
+          liveStatus.classList.remove("offline");
+          liveStatus.classList.toggle("demo", mode === "browser-local");
+          liveStatus.innerHTML = `<i class="live-dot"></i>${escapeHtml(label)}`;
+        },
+        onReservationCreated: (reservation) => {
+          const periodLabel = PERIODS[reservation.period]?.label ?? "";
+          const prefix = periodLabel ? `（${periodLabel}）` : "";
+          const message = `新訂位${prefix}：${reservation.date} ${reservation.time}，${reservation.guestCount} 位`;
+          showToast(message);
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("收到新訂位", { body: message });
+          }
+          loadData().catch((error) => showToast(error.message));
+        },
+        onReservationUpdated: () => {
+          loadData().catch((error) => showToast(error.message));
+        },
+        onError: () => {
+          liveStatus.classList.remove("demo");
+          liveStatus.classList.add("offline");
+          liveStatus.innerHTML = '<i class="live-dot"></i>重新連線中…';
+          showToast("即時連線中斷，系統將自動重新連線。");
+        },
+      });
+    }
+
+    function toggleConnForm() {
+      connForm.classList.toggle("open");
+      updateConnectionUI();
+    }
+
+    document.querySelector("#toggle-conn").addEventListener("click", toggleConnForm);
+    document.querySelector("#open-conn-btn").addEventListener("click", toggleConnForm);
+    demoSeedBtn.addEventListener("click", () => {
+      bridge.seedDemoData();
+      dateInput.value = bridge.localToday();
+      showToast("已重置今日示範訂位資料（午、晚各 1 組）。");
+      loadData().catch((error) => showToast(error.message));
+    });
+    demoClearBtn.addEventListener("click", () => {
+      bridge.clearLocalData();
+      showToast("已清空瀏覽器本機示範資料。");
+      loadData().catch((error) => showToast(error.message));
+    });
+
+    connForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const saveBtn = document.querySelector("#save-conn");
+      saveBtn.disabled = true;
+      try {
+        const url = backendUrlInput.value.trim();
+        const password = backendPassInput.value;
+        await bridge.testRemoteConnection({ url, password });
+        bridge.saveConnectionConfig({ url, password });
+        connForm.classList.remove("open");
+        updateConnectionUI();
+        connectLive();
+        await loadData();
+        showToast("已成功連線至遠端後端伺服器！");
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    document.querySelector("#disconnect-conn").addEventListener("click", () => {
+      bridge.clearConnectionConfig();
+      connForm.classList.remove("open");
+      updateConnectionUI();
+      connectLive();
+      loadData().catch((error) => showToast(error.message));
+      showToast(bridge.isStaticHost() ? "已切換回 GitHub Pages 獨立模式。" : "已切回同源伺服器模式。");
+    });
+
+    document.querySelector("#tab-lunch").addEventListener("click", () => setPeriod("lunch"));
+    document.querySelector("#tab-dinner").addEventListener("click", () => setPeriod("dinner"));
+    document.querySelector("#refresh").addEventListener("click", () => loadData().catch((error) => showToast(error.message)));
+    dateInput.addEventListener("change", () => loadData().catch((error) => showToast(error.message)));
+    timeSelect.addEventListener("change", () => loadData().catch((error) => showToast(error.message)));
+    document.querySelector("#notifications").addEventListener("click", async () => {
+      if (!("Notification" in window)) return showToast("此瀏覽器不支援桌面通知；頁面內仍會顯示提醒。");
+      const permission = await Notification.requestPermission();
+      showToast(permission === "granted" ? "已啟用桌面提醒。" : "未授權桌面通知；頁面內仍會顯示提醒。");
+    });
+
+    dateInput.value = bridge.localToday();
+    updatePeriodUI();
+    populateTimeOptions(currentPeriod, false);
+    updateConnectionUI();
+    connectLive();
+    loadData().catch((error) => showToast(error.message));
+  </script>
+</body>
+</html>
