@@ -42,8 +42,8 @@ const responseSchema = {
     },
     planChoice: {
       type: "STRING",
-      enum: ["", "A", "B"],
-      description: "若目前正在等待選擇拆桌方案，且使用者表達選擇方案 A 或 B，請填入 A 或 B；否則填空字串",
+      enum: ["NONE", "A", "B"],
+      description: "若目前正在等待選擇拆桌方案，且使用者表達選擇方案 A 或 B，請填入 A 或 B；否則填 NONE",
     },
     reply: {
       type: "STRING",
@@ -99,7 +99,7 @@ function buildSystemInstruction({ todayDate, nowTime, restaurantInfo }) {
     "4. 人數請加總大人小孩（如「四大一小」= 5，「一家三口」= 3，「我們兩個人」= 2）。切勿把『4人桌』『2小時』『6張桌』等店家規則數字誤當成 guestCount。",
     "5. 當系統正在等待確認（awaitingConfirmation = true）：",
     "   - 顧客同意訂位（如「好」「確認」「沒問題幫我訂」「OK」）-> intent = 'confirm'。",
-    "   - 若有拆桌方案 A/B，顧客選第一個/A/對應桌型 -> intent = 'select_plan', planChoice = 'A'；選第二個/B/對應桌型 -> intent = 'select_plan', planChoice = 'B'。",
+    "   - 若有拆桌方案 A/B，顧客選第一個/A/對應桌型 -> intent = 'select_plan', planChoice = 'A'；選第二個/B/對應桌型 -> intent = 'select_plan', planChoice = 'B'；未選擇方案則 planChoice = 'NONE'。",
     "   - 若顧客要改日期、時間、人數或電話 -> intent = 'booking' 並填入欲修改的新欄位。",
     "6. 顧客放棄或取消流程（如「取消」「不訂了」「算了」）-> intent = 'cancel'。",
     "7. 顧客單純打招呼或詢問營業資訊 -> intent = 'inquiry' 或 'other'，並在 reply 用親切簡短的繁體中文回覆，同時引導提供訂位資訊。",
