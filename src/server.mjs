@@ -24,20 +24,28 @@ function resolveAllowedOrigin(request) {
   const origin = String(request.headers.origin ?? "").trim().replace(/\/+$/u, "");
   if (!origin) return "";
   if (config.corsOrigins.includes(origin)) return origin;
-  if (/^https:\/\/[a-z0-9-]+\.github\.io$/iu.test(origin)) return origin;
+  if (/^https:\/\/(?:[a-z0-9-]+\.)+github\.io$/iu.test(origin)) return origin;
   if (/^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/iu.test(origin)) return origin;
   return "";
 }
 
 function corsHeaders(request) {
+  const origin = String(request.headers.origin ?? "").trim();
   const allowedOrigin = resolveAllowedOrigin(request);
-  if (!allowedOrigin) return {};
-  return {
+  if (!allowedOrigin) {
+    if (origin) console.warn(`[cors] 略過未列入白名單的來源：${origin}`);
+    return {};
+  }
+  const headers = {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Cache-Control, Pragma",
     Vary: "Origin",
   };
+  if (request.headers["access-control-request-private-network"] === "true") {
+    headers["Access-Control-Allow-Private-Network"] = "true";
+  }
+  return headers;
 }
 
 function sendJson(request, response, status, body) {

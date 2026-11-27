@@ -683,7 +683,17 @@
   }
 
   function normalizeBaseUrl(raw) {
-    return String(raw || "").trim().replace(/\/+$/u, "");
+    let text = String(raw || "").trim();
+    if (!text) return "";
+    if (!/^https?:\/\//iu.test(text)) {
+      text = /^(?:localhost|127\.0\.0\.1)(?::|\/|$)/iu.test(text) ? `http://${text}` : `https://${text}`;
+    }
+    try {
+      const parsed = new URL(text);
+      return parsed.origin;
+    } catch {
+      return text.replace(/\/+$/u, "");
+    }
   }
 
   function getConnectionConfig() {
@@ -796,10 +806,17 @@
     if (!/^https?:\/\//iu.test(cleanUrl)) throw new Error("後端網址須以 http:// 或 https:// 開頭。");
     const today = localToday();
     const auth = buildAuthHeader(password);
-    const response = await fetch(`${cleanUrl}/api/reservations?date=${today}&period=lunch&time=all`, {
-      cache: "no-store",
-      headers: auth ? { Authorization: auth } : {},
-    });
+    let response;
+    try {
+      response = await fetch(`${cleanUrl}/api/reservations?date=${today}&period=lunch&time=all`, {
+        cache: "no-store",
+        headers: auth ? { Authorization: auth } : {},
+      });
+    } catch {
+      throw new Error(
+        `無法連上 ${cleanUrl}（網路或瀏覽器 CORS/HTTPS 阻擋）。請確認網址為目前 cloudflared 視窗顯示的 https://xxxx.trycloudflare.com，且本機伺服器仍在執行。`,
+      );
+    }
     if (response.status === 401) throw new Error("已連上後端，但 ADMIN_PASSWORD 不正確。");
     if (!response.ok) throw new Error(`後端回應異常（HTTP ${response.status}）。`);
     return response.json();
