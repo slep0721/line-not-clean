@@ -333,7 +333,11 @@ const server = createServer(async (request, response) => {
     }
   }
 
-  if (request.method === "POST" && url.pathname === "/webhook") {
+  const isWebhookPath = url.pathname === "/webhook"
+    || url.pathname === "/webhook/"
+    || (url.pathname === "/" && Boolean(request.headers["x-line-signature"]));
+
+  if (request.method === "POST" && isWebhookPath) {
     let rawBody;
     try {
       rawBody = await readRawBody(request);
@@ -354,8 +358,11 @@ const server = createServer(async (request, response) => {
       return sendJson(request, response, 400, { error: "Invalid JSON" });
     }
 
+    const events = Array.isArray(webhook.events) ? webhook.events : [];
+    console.info(`[webhook] 驗證通過（路徑 ${url.pathname}，events: ${events.length}）。`);
+
     try {
-      for (const event of webhook.events ?? []) {
+      for (const event of events) {
         if (event.type !== "message" || !event.replyToken || !event.webhookEventId) continue;
         if (!claimWebhookEvent(event.webhookEventId)) continue;
         const userId = event.source?.userId ?? `event:${event.webhookEventId}`;
@@ -371,6 +378,7 @@ const server = createServer(async (request, response) => {
     return sendJson(request, response, 200, { ok: true });
   }
 
+  console.warn(`[http] 404 Not Found: ${request.method} ${url.pathname}`);
   sendJson(request, response, 404, { error: "Not found" });
 });
 
